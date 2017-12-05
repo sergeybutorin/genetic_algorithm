@@ -49,7 +49,7 @@ class Chromosome {
     }
 }
 
-var chromosomes = [Chromosome]()
+var population = [Chromosome]()
 
 func readInt(maxValue: Int = Int.max) -> Int {
     while (true) {
@@ -63,8 +63,24 @@ func readInt(maxValue: Int = Int.max) -> Int {
     }
 }
 
-func selection(graph: [[Int]]) -> [Chromosome] {
-    return chromosomes.sorted(by: { $0.value(forGraph: graph) > $1.value(forGraph: graph) })
+func selection(graph: [[Int]]) {
+    population.sort(by: { $0.value(forGraph: graph) > $1.value(forGraph: graph) })
+}
+
+func tournamentSelection(oldPopulation: [Chromosome],
+                         count: Int,
+                         graph: [[Int]]) -> [Chromosome] {
+    var newPopulation = [Chromosome]()
+    while newPopulation.count < count {
+        let first = oldPopulation[Int(arc4random_uniform(UInt32(oldPopulation.count - 1)))]
+        let second = oldPopulation[Int(arc4random_uniform(UInt32(oldPopulation.count - 1)))]
+        if first.value(forGraph: graph) > second.value(forGraph: graph) {
+            newPopulation.append(first)
+        } else {
+            newPopulation.append(second)
+        }
+    }
+    return newPopulation
 }
 
 func createPopulation() {
@@ -78,7 +94,7 @@ func createGraph(dimension: Int) -> [[Int]] {
     for i in 0..<dimension {
         for j in 0..<dimension {
             if i != j {
-                graph[i][j] = Int(arc4random_uniform(UInt32(dimension)))
+                graph[i][j] = 10 + Int(arc4random_uniform(UInt32(50)))
             }
         }
     }
@@ -95,13 +111,13 @@ print("Введите номер получателя (от 1 до \(pcInWeb))")
 let receiver = readInt(maxValue: pcInWeb)
 
 print("Введите размер популяции:")
-let chromosomeCount = readInt()
+let populationCount = readInt()
 
 print("Введите количество итераций:")
 let iterationsCount = readInt()
 
-for _ in 0..<chromosomeCount {
-    chromosomes.append(Chromosome(pcInWeb, sender: sender, receiver: receiver))
+for _ in 0..<populationCount {
+    population.append(Chromosome(pcInWeb, sender: sender, receiver: receiver))
 }
 
 let graph = createGraph(dimension: pcInWeb)
@@ -112,22 +128,22 @@ for row in 0..<graph.count {
     print(graph[row])
 }
 
-chromosomes = selection(graph: graph)
-
-print("\nЗначения хромосом: ")
-
-for c in chromosomes {
-    print(c.gens)
-}
-
-print("\nРезультат хромосом: ")
-
-for c in chromosomes {
-    var value = 0
-    for i in 0..<c.gens.count - 1 {
-        value += graph[c.gens[i]][c.gens[i + 1]]
+for _ in 0..<iterationsCount {
+    print("\nРезультат хромосом: ")
+    
+    for c in population {
+        print(c.value(forGraph: graph))
     }
-    print(value)
+    
+    print("\nЗначения хромосом: ")
+    
+    for c in population {
+        print(c.gens)
+    }
+    population = tournamentSelection(oldPopulation: population,
+                                      count: populationCount,
+                                      graph: graph)
+    selection(graph: graph)
 }
 
 
