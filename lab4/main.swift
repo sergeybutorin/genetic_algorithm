@@ -8,13 +8,17 @@
 
 import Foundation
 
-let pCros = 0.8
 let pMut = 0.4
 let SELF_VALUE = 100000
+let aliveProportion = 0.8
 
 class Chromosome {
     var gens = [Int]()
     
+    init() {
+        
+    }
+
     init(_ gensCount: Int, sender: Int, receiver: Int) {
         gens = Array(0...gensCount - 1)
         if sender > 1 {
@@ -63,28 +67,76 @@ func readInt(maxValue: Int = Int.max) -> Int {
     }
 }
 
-func selection(graph: [[Int]]) {
-    population.sort(by: { $0.value(forGraph: graph) > $1.value(forGraph: graph) })
-}
-
 func tournamentSelection(oldPopulation: [Chromosome],
-                         count: Int,
                          graph: [[Int]]) -> [Chromosome] {
     var newPopulation = [Chromosome]()
-    while newPopulation.count < count {
+    while newPopulation.count < Int(aliveProportion * Double(oldPopulation.count)) {
         let first = oldPopulation[Int(arc4random_uniform(UInt32(oldPopulation.count - 1)))]
         let second = oldPopulation[Int(arc4random_uniform(UInt32(oldPopulation.count - 1)))]
         if first.value(forGraph: graph) > second.value(forGraph: graph) {
-            newPopulation.append(first)
+             newPopulation.append(first)
         } else {
-            newPopulation.append(second)
+             newPopulation.append(second)
         }
     }
     return newPopulation
 }
 
-func createPopulation() {
-    
+func rouletteSelection(oldPopulation: [Chromosome],
+                       graph: [[Int]]) -> [Chromosome] {
+    var oldPopulation = oldPopulation
+    var newPopulation = [Chromosome]()
+    while newPopulation.count <= Int(aliveProportion * Double(oldPopulation.count)) {
+        var sumFit = 0
+        for member in oldPopulation {
+            sumFit += member.value(forGraph: graph)
+        }
+        let rouletPos = Int(arc4random_uniform(UInt32(sumFit)))
+        var rouletPosForMember = oldPopulation[0].value(forGraph: graph)
+        for i in 0..<oldPopulation.count {
+            if rouletPos < rouletPosForMember {
+//                print("Value: \(rouletPos), \(i)-th member selected")
+                newPopulation.append(oldPopulation[i])
+                oldPopulation.remove(at: i)
+                break
+            }
+            rouletPosForMember += oldPopulation[i].value(forGraph: graph)
+        }
+    }
+    return newPopulation
+}
+
+func cross(firstC: Chromosome, secondC: Chromosome) -> Chromosome {
+    let newChromosome = Chromosome()
+    for i in 0..<firstC.gens.count {
+        let num = arc4random_uniform(1)
+        if num > 0 {
+            newChromosome.gens.append(secondC.gens[i])
+        } else {
+            newChromosome.gens.append(firstC.gens[i])
+        }
+    }
+    return newChromosome
+}
+
+func createMutations(population: [Chromosome]) {
+    for chromosome in population {
+        let prob = arc4random_uniform(100)
+        if Double(prob/100) < pMut {
+            chromosome.mutate()
+        }
+    }
+}
+
+func createInitialPopulation(count: Int,
+                             pcInWeb: Int,
+                             sender: Int,
+                             receiver: Int) -> [Chromosome] {
+    var newPopulation = [Chromosome]()
+    for _ in 0..<count {
+        newPopulation.append(Chromosome(pcInWeb, sender: sender, receiver: receiver))
+    }
+    return newPopulation
 }
 
 func createGraph(dimension: Int) -> [[Int]] {
@@ -94,7 +146,7 @@ func createGraph(dimension: Int) -> [[Int]] {
     for i in 0..<dimension {
         for j in 0..<dimension {
             if i != j {
-                graph[i][j] = 10 + Int(arc4random_uniform(UInt32(50)))
+                graph[i][j] = 10 + Int(arc4random_uniform(UInt32(100)))
             }
         }
     }
@@ -116,10 +168,6 @@ let populationCount = readInt()
 print("Введите количество итераций:")
 let iterationsCount = readInt()
 
-for _ in 0..<populationCount {
-    population.append(Chromosome(pcInWeb, sender: sender, receiver: receiver))
-}
-
 let graph = createGraph(dimension: pcInWeb)
 
 print("\nСетевой граф: ")
@@ -129,6 +177,23 @@ for row in 0..<graph.count {
 }
 
 for _ in 0..<iterationsCount {
+    
+    if population.isEmpty {
+        population = createInitialPopulation(count: populationCount,
+                                             pcInWeb: pcInWeb,
+                                             sender: sender,
+                                             receiver: receiver)
+    } else {
+        population = rouletteSelection(oldPopulation: population,
+                     graph: graph)
+    }
+    
+    while population.count < populationCount {
+        population.append(cross(firstC: population[Int(arc4random_uniform(UInt32(population.count - 1)))], secondC: population[Int(arc4random_uniform(UInt32(population.count - 1)))]))
+    }
+    
+    createMutations(population: population)
+    
     print("\nРезультат хромосом: ")
     
     for c in population {
@@ -140,10 +205,6 @@ for _ in 0..<iterationsCount {
     for c in population {
         print(c.gens)
     }
-    population = tournamentSelection(oldPopulation: population,
-                                      count: populationCount,
-                                      graph: graph)
-    selection(graph: graph)
 }
 
 
