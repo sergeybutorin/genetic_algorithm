@@ -56,10 +56,10 @@ class Chromosome {
 
 var population = [Chromosome]()
 
-func readInt(maxValue: Int = Int.max) -> Int {
+func readInt(minValue: Int = 1, maxValue: Int = Int.max) -> Int {
     while (true) {
         guard let value = Int(readLine()!),
-            value > 0,
+            value >= minValue,
             value <= maxValue else {
             print("Попробуйте еще раз:")
             continue
@@ -122,6 +122,7 @@ func cross(firstC: Chromosome, secondC: Chromosome) -> Chromosome {
 }
 
 func reproduction(population: [Chromosome], populationCount: Int) -> [Chromosome] {
+    print("Репродукция")
     var newPopulation = population
     while newPopulation.count < populationCount {
         newPopulation.append(cross(
@@ -132,6 +133,7 @@ func reproduction(population: [Chromosome], populationCount: Int) -> [Chromosome
 }
 
 func createMutations(population: [Chromosome]) {
+    print("Мутации")
     for chromosome in population {
         let prob = arc4random_uniform(100)
         if Double(prob/100) < pMut {
@@ -165,12 +167,19 @@ func createGraph(dimension: Int) -> [[Int]] {
     return graph
 }
 
-func genAlgorythm(populationCount: Int,
+func printPopulation(population: [Chromosome]) {
+    print("\nЗначения хромосом: ")
+    
+    for c in population {
+        print(c.gens)
+    }
+}
+
+func genIteration(populationCount: Int,
                   graph: [[Int]],
                   sender: Int,
-                  receiver: Int,
-                  iterations: Int) {
-    for _ in 0..<iterations {
+                  receiver: Int) {
+    
         if population.isEmpty {
             population = createInitialPopulation(count: populationCount,
                                                  pcInWeb: graph.count,
@@ -182,30 +191,42 @@ func genAlgorythm(populationCount: Int,
             population = rouletteSelection(oldPopulation: population,
                                            graph: graph)
         }
+    
+        printPopulation(population: population)
         
         population = reproduction(population: population,
                                   populationCount: populationCount)
-        
+    
+        printPopulation(population: population)
+    
         createMutations(population: population)
-        
-//        print("\nПропускная способность для популяции: ")
-        
+    
+        printPopulation(population: population)
+    
+        print("\nПропускная способность для популяции: ")
+    
         var best = 0
         
         for c in population {
             let value = c.value(forGraph: graph)
             
             best = max(best, value)
-//            print(value)
+            print(value)
         }
         
         print("Лучший результат: ", best)
-        
-        //    print("\nЗначения хромосом: ")
-        //
-        //    for c in population {
-        //        print(c.gens)
-        //    }
+}
+
+func genAlgorythm(iterations: Int,
+                  populationCount: Int,
+                  graph: [[Int]],
+                  sender: Int,
+                  receiver: Int) {
+    for _ in 0..<iterations {
+        genIteration(populationCount: populationCount,
+                     graph: graph,
+                     sender: sender,
+                     receiver: receiver)
     }
 }
 
@@ -222,8 +243,8 @@ func runUserInput() {
     print("Введите размер популяции:")
     let populationCount = readInt()
     
-    print("Введите количество итераций:")
-    let iterationsCount = readInt()
+    print("Введите количество итераций (-1 для пошагового выполнения):")
+    let iterationsCount = readInt(minValue: -1)
     
     let graph = createGraph(dimension: pcInWeb)
     
@@ -232,12 +253,26 @@ func runUserInput() {
     for row in 0..<graph.count {
         print(graph[row])
     }
+    if iterationsCount > 0 {
+        genAlgorythm(iterations: iterationsCount,
+                     populationCount: populationCount,
+                     graph: graph,
+                     sender: sender,
+                     receiver: receiver)
+    } else {
+        while true {
+            genIteration(populationCount: populationCount,
+                         graph: graph,
+                         sender: sender,
+                         receiver: receiver)
+            print("Продолжить выполнение? (y/n):")
+            let res = readLine()
+            if (res != "y") {
+                break
+            }
+        }
+    }
     
-    genAlgorythm(populationCount: populationCount,
-                 graph: graph,
-                 sender: sender,
-                 receiver: receiver,
-                 iterations: iterationsCount)
 }
 
 func test() {
@@ -264,14 +299,14 @@ func test() {
         [73, 61, 108, 22, 99, 57, 84, 14, 92, 87, 90, 66, 61, 61, 14, 32, 101, 98, 47, 100000],
     ]
     
-    genAlgorythm(populationCount: 50,
+    genAlgorythm(iterations: 400,
+                 populationCount: 50,
                  graph: graph,
                  sender: 2,
-                 receiver: 18,
-                 iterations: 400)
+                 receiver: 18)
 }
 
-//runUserInput()
-test()
+runUserInput()
+//test()
 
 
